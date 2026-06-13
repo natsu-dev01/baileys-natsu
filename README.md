@@ -24,7 +24,23 @@ import makeWASocket from 'baileys-natsu'
 const { makeWASocket } = await import('baileys-natsu')
 ```
 
-## Disclaimer
+## Ejemplo rápido
+
+```ts
+import makeWASocket from 'baileys-natsu'
+
+const sock = makeWASocket({
+    printQRInTerminal: false
+})
+
+if (!sock.authState.creds.registered) {
+    const number = '51928616320'
+    const code = await sock.requestPairingCode(number)
+    console.log(code)
+}
+```
+
+Ver [Example/example.ts](Example/example.ts)
 
 Este proyecto no está afiliado, asociado, autorizado, respaldado ni conectado oficialmente con WhatsApp ni ninguna de sus subsidiarias o afiliadas.
 El uso de esta librería es bajo tu propia responsabilidad. No uses esta librería para spam, mensajes automatizados masivos o cualquier otra actividad que viole los Términos de Servicio de WhatsApp.
