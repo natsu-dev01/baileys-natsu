@@ -1,73 +1,33 @@
-<h1 align='center'><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
+<h1 align='center'>baileys-natsu</h1>
 
-<div align='center'>Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.</div>
+<div align='center'>Fork de Baileys — librería en TypeScript para interactuar con WhatsApp Web mediante WebSockets.</div>
 
+<br>
 
-> [!CAUTION]
-> NOTICE OF BREAKING CHANGE.
->
-> As of 7.0.0, multiple breaking changes were introduced into the library.
->
-> Please check out https://whiskey.so/migrate-latest for more information.
+## Instalación
 
-# Important Note
-This is a temporary README.md, the new guide is in development and will this file will be replaced with .github/README.md (already a default on GitHub).
-
-New guide link: https://baileys.wiki
-
-# Get Support
-
-If you'd like business to enterprise-level support from Rajeh, the current maintainer of Baileys, you can book a video chat. Book a 1 hour time slot by contacting him on Discord or pre-ordering [here](https://purpshell.dev/book). The earlier you pre-order the better, as his time slots usually fill up very quickly. He offers immense value per hour and will answer all your questions before the time runs out.
-
-If you are a business, we encourage you to contribute back to the high development costs of the project and to feed the maintainers who dump tens of hours a week on this. You can do so by booking meetings or sponsoring below. All support, even in bona fide / contribution hours, is welcome by businesses of all sizes. This is not condoning or endorsing businesses to use the library. See the Disclaimer below.
-
-# Sponsor
-If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
-
-# Disclaimer
-This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
-The official WhatsApp website can be found at whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
-
-The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
-Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
-
-##
-
-- Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**.
-- Not running Selenium or Chromium saves you like **half a gig** of ram :/
-- Baileys supports interacting with the multi-device & web versions of WhatsApp.
-- Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writing his observations on the workings of WhatsApp Multi-Device. Also, thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing his observations on the workings of WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
-
-> [!IMPORTANT]
-> The original repository had to be removed by the original author - we now continue development in this repository here.
-This is the only official repository and is maintained by the community.
-> **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
-
-## Example
-
-Do check out & run [example.ts](Example/example.ts) to see an example usage of the library.
-The script covers most common use cases.
-To run the example script, download or clone the repo and then type the following in a terminal:
-1. ``` cd path/to/Baileys ```
-2. ``` yarn ```
-3. ``` yarn example ```
-
-## Install
-
-Use the stable version:
-```
-yarn add @whiskeysockets/baileys
+```bash
+npm install baileys-natsu@rc
 ```
 
-Use the edge version (no guarantee of stability, but latest fixes + features)
-```
-yarn add github:WhiskeySockets/Baileys
+```bash
+yarn add baileys-natsu@rc
 ```
 
-Then import your code using:
+## Uso
+
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from 'baileys-natsu'
 ```
+
+```js
+const { makeWASocket } = await import('baileys-natsu')
+```
+
+## Disclaimer
+
+Este proyecto no está afiliado, asociado, autorizado, respaldado ni conectado oficialmente con WhatsApp ni ninguna de sus subsidiarias o afiliadas.
+El uso de esta librería es bajo tu propia responsabilidad. No uses esta librería para spam, mensajes automatizados masivos o cualquier otra actividad que viole los Términos de Servicio de WhatsApp.
 
 # Links
 

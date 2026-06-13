@@ -514,7 +514,23 @@ export const generateWAMessageContent = async (
 				break
 		}
 	} else if (hasOptionalProperty(message, 'ptv') && message.ptv) {
-		const { videoMessage } = await prepareWAMessageMedia({ video: message.video }, options)
+		const { videoMessage } = await prepareWAMessageMedia({
+			video: message.video,
+			caption: message.caption,
+			gifPlayback: message.gifPlayback,
+			jpegThumbnail: message.jpegThumbnail,
+			seconds: message.seconds,
+			gifAttribution: message.gifAttribution,
+			streamingSidecar: message.streamingSidecar,
+			accessibilityLabel: message.accessibilityLabel,
+			metadataUrl: message.metadataUrl,
+			videoSourceType: message.videoSourceType,
+			motionPhotoPresentationOffsetMs: message.motionPhotoPresentationOffsetMs,
+			interactiveAnnotations: message.interactiveAnnotations,
+			annotations: message.annotations,
+			externalShareFullVideoDurationInSeconds: message.externalShareFullVideoDurationInSeconds,
+			mediaKeyDomain: message.mediaKeyDomain,
+		}, options)
 		m.ptvMessage = videoMessage
 	} else if (hasNonNullishProperty(message, 'product')) {
 		const { imageMessage } = await prepareWAMessageMedia({ image: message.product.productImage }, options)

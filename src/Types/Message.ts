@@ -186,6 +186,28 @@ export type AnyMediaMessageContent = (
 			jpegThumbnail?: string
 			/** if set to true, will send as a `video note` */
 			ptv?: boolean
+			/** duration in seconds */
+			seconds?: number
+			/** attribution for GIF playback */
+			gifAttribution?: proto.Message.VideoMessage.Attribution
+			/** sidecar data for streaming */
+			streamingSidecar?: Uint8Array
+			/** accessibility label */
+			accessibilityLabel?: string
+			/** metadata URL */
+			metadataUrl?: string
+			/** source type (user video or AI generated) */
+			videoSourceType?: proto.Message.VideoMessage.VideoSourceType
+			/** motion photo presentation offset */
+			motionPhotoPresentationOffsetMs?: number
+			/** interactive annotations overlaid on video */
+			interactiveAnnotations?: proto.IInteractiveAnnotation[]
+			/** additional annotations */
+			annotations?: proto.IInteractiveAnnotation[]
+			/** duration for external share */
+			externalShareFullVideoDurationInSeconds?: number
+			/** media key domain */
+			mediaKeyDomain?: proto.Message.MediaKeyDomain
 	  } & Mentionable &
 			Contextable &
 			WithDimensions)
