@@ -1,6 +1,6 @@
 import { proto } from '../../WAProto/index.js'
 import { makeLibSignalRepository } from '../Signal/libsignal'
-import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
+import type { AuthenticationState, CacheStore, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
@@ -58,6 +58,16 @@ export const DEFAULT_CACHE_TTLS = {
 	USER_DEVICES: 5 * 60 // 5 minutes
 }
 
+const defaultMediaCache: CacheStore = (() => {
+	const cache = new Map<string, any>()
+	return {
+		get: <T>(key: string) => cache.get(key) as T | undefined,
+		set: <T>(key: string, value: T) => { cache.set(key, value) },
+		del: (key: string) => { cache.delete(key) },
+		flushAll: () => { cache.clear() }
+	}
+})()
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
 	browser: Browsers.macOS('Chrome'),
@@ -84,6 +94,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	generateHighQualityLinkPreview: false,
 	enableAutoSessionRecreation: true,
 	enableRecentMessageCache: true,
+	mediaCache: defaultMediaCache,
 	options: {},
 	appStateMacVerification: {
 		patch: false,

@@ -3,7 +3,7 @@ import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
-import type { Agent } from 'https'
+import https from 'https'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -688,7 +688,7 @@ export type UploadParams = {
 	filePath: string
 	headers: Record<string, string>
 	timeoutMs?: number
-	agent?: Agent
+	agent?: https.Agent
 }
 
 export const uploadWithNodeHttp = async (
@@ -823,10 +823,21 @@ const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<Medi
 	}
 }
 
+let defaultUploadAgent: https.Agent | undefined
+
+function getUploadAgent(existingAgent?: https.Agent): https.Agent | undefined {
+	if (existingAgent) return existingAgent
+	if (!defaultUploadAgent) {
+		defaultUploadAgent = new https.Agent({ keepAlive: true, maxSockets: 10, timeout: 60000 })
+	}
+	return defaultUploadAgent
+}
+
 export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
 ): WAMediaUploadFunction => {
+	const agent = getUploadAgent(fetchAgent)
 	return async (filePath, { mediaType, fileEncSha256B64, timeoutMs }) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
@@ -863,7 +874,7 @@ export const getWAUploadToServer = (
 						filePath,
 						headers,
 						timeoutMs,
-						agent: fetchAgent
+						agent
 					},
 					logger
 				)
