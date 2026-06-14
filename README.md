@@ -5,17 +5,20 @@
 </p>
 
 <p align="center">
-  <a href="#instalacion">Instalacion</a> •
-  <a href="#uso-basico">Uso Basico</a> •
+  <a href="#instalacion">Instalación</a> •
+  <a href="#conectar-cuenta">Conectar Cuenta</a> •
   <a href="#enviar-mensajes">Enviar Mensajes</a> •
-  <a href="#descargar-media">Descargar Media</a> •
+  <a href="#manipular-media">Manipular Media</a> •
   <a href="#grupos">Grupos</a> •
   <a href="#eventos">Eventos</a>
 </p>
 
 ---
 
-## Instalacion
+> [!CAUTION]
+> Esta librería no está afiliada, asociada, autorizada, respaldada ni conectada oficialmente con WhatsApp. El uso es bajo tu propia responsabilidad. No uses esta librería para spam o actividades que violen los Términos de Servicio de WhatsApp.
+
+## Instalación
 
 ```bash
 npm install baileys-natsu
@@ -25,17 +28,60 @@ npm install baileys-natsu
 yarn add baileys-natsu
 ```
 
+```ts
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, downloadMediaMessage } from 'baileys-natsu'
+```
+
 ---
 
-## Uso Basico
+## Índice
 
-### Conexion con QR
+- [Conectar Cuenta](#conectar-cuenta)
+    - [Con QR](#conectar-con-qr)
+    - [Con Pairing Code](#conectar-con-pairing-code)
+    - [Recibir Historial Completo](#recibir-historial-completo)
+- [Guardar Sesión](#guardar-sesión)
+- [Eventos](#eventos)
+    - [Ejemplo Completo](#ejemplo-completo)
+- [Enviar Mensajes](#enviar-mensajes)
+    - [Texto](#texto)
+    - [Citar Mensaje](#citar-mensaje)
+    - [Mencionar](#mencionar)
+    - [Reacción](#reacción)
+    - [Ubicación](#ubicación)
+    - [Contacto](#contacto)
+    - [Encuesta](#encuesta)
+    - [Imagen](#imagen)
+    - [Video](#video)
+    - [Audio](#audio)
+    - [Documento](#documento)
+    - [Sticker](#sticker)
+    - [ViewOnce](#viewonce)
+    - [Editar Mensaje](#editar-mensaje)
+    - [Eliminar Mensaje](#eliminar-mensaje)
+    - [Reenviar](#reenviar)
+- [Manipular Media](#manipular-media)
+    - [Descargar Media](#descargar-media)
+    - [Thumbnails](#thumbnails)
+- [Presencia](#presencia)
+- [Modificar Chats](#modificar-chats)
+- [Grupos](#grupos)
+- [Perfil](#perfil)
+- [Privacidad](#privacidad)
+- [Utilidades](#utilidades)
+
+---
+
+## Conectar Cuenta
+
+WhatsApp Web permite autenticarse como segundo cliente escaneando un **código QR** o usando un **código de pairing**.
+
+### Conectar con QR
 
 ```ts
-import makeWASocket from 'baileys-natsu'
-import { useMultiFileAuthState } from 'baileys-natsu'
+import makeWASocket, { useMultiFileAuthState } from 'baileys-natsu'
 
-const start = async () => {
+async function start() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info')
 
   const sock = makeWASocket({
@@ -44,7 +90,6 @@ const start = async () => {
   })
 
   sock.ev.on('creds.update', saveCreds)
-
   sock.ev.on('connection.update', ({ connection }) => {
     if (connection === 'open') console.log('Conectado!')
   })
@@ -53,7 +98,10 @@ const start = async () => {
 start()
 ```
 
-### Conexion con codigo de pairing
+### Conectar con Pairing Code
+
+> [!IMPORTANT]
+> El número debe ir sin `+`, `()`, `-`, solo dígitos con código de país.
 
 ```ts
 import makeWASocket from 'baileys-natsu'
@@ -62,8 +110,105 @@ const sock = makeWASocket({ printQRInTerminal: false })
 
 if (!sock.authState.creds.registered) {
   const codigo = await sock.requestPairingCode('521234567890')
-  console.log('Codigo de pairing:', codigo)
+  console.log('Código de pairing:', codigo)
 }
+```
+
+### Recibir Historial Completo
+
+```ts
+const sock = makeWASocket({
+  browser: Browsers.macOS('Desktop'),
+  syncFullHistory: true,
+})
+```
+
+---
+
+## Guardar Sesión
+
+Para no escanear el QR cada vez, guarda las credenciales:
+
+```ts
+import makeWASocket, { useMultiFileAuthState } from 'baileys-natsu'
+
+const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+
+const sock = makeWASocket({ auth: state })
+
+sock.ev.on('creds.update', saveCreds)
+```
+
+> [!IMPORTANT]
+> `useMultiFileAuthState` guarda en una carpeta. Para producción se recomienda usar una base de datos.
+
+---
+
+## Eventos
+
+### Ejemplo Completo
+
+```ts
+import makeWASocket, { DisconnectReason, useMultiFileAuthState } from 'baileys-natsu'
+import { Boom } from '@hapi/boom'
+
+async function connect() {
+  const { state, saveCreds } = await useMultiFileAuthState('auth_info')
+
+  const sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true,
+  })
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
+      if (shouldReconnect) connect()
+    } else if (connection === 'open') {
+      console.log('Conectado')
+    }
+  })
+
+  sock.ev.on('creds.update', saveCreds)
+
+  sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    if (type !== 'notify') return
+    for (const msg of messages) {
+      if (msg.key.fromMe) continue
+      console.log('Mensaje:', msg.message?.conversation)
+    }
+  })
+
+  sock.ev.on('messages.update', (updates) => {
+    for (const { key, update } of updates) {
+      if (update.pollUpdates) {
+        const aggregation = getAggregateVotesInPollMessage({
+          message: pollCreation,
+          pollUpdates: update.pollUpdates,
+        })
+      }
+    }
+  })
+
+  sock.ev.on('presence.update', ({ id, presences }) => {
+    for (const [participant, data] of Object.entries(presences)) {
+      console.log(`${participant}: ${data.lastKnownPresence}`)
+    }
+  })
+
+  sock.ev.on('group-participants.update', ({ id, participants, action }) => {
+    console.log(`Grupo ${id}: ${action} -> ${participants.join(', ')}`)
+  })
+
+  sock.ev.on('call', (calls) => {
+    for (const call of calls) {
+      console.log(`Llamada de ${call.from}: ${call.status}`)
+    }
+  })
+}
+
+connect()
 ```
 
 ---
@@ -71,83 +216,65 @@ if (!sock.authState.creds.registered) {
 ## Enviar Mensajes
 
 ```ts
-import makeWASocket from 'baileys-natsu'
-
-const sock = makeWASocket({ /* ... */ })
 const jid = '521234567890@s.whatsapp.net'
+```
 
-// Texto
+### Texto
+
+```ts
 await sock.sendMessage(jid, { text: 'Hola mundo!' })
+```
 
-// Texto con cita (reply)
-await sock.sendMessage(jid, { text: 'Respuesta' }, { quoted: msg.key })
+### Citar Mensaje
 
-// Imagen
+```ts
+await sock.sendMessage(jid, { text: 'Respuesta' }, { quoted: msg })
+```
+
+### Mencionar
+
+```ts
 await sock.sendMessage(jid, {
-  image: Buffer.from('...'),
-  caption: 'Foto',
+  text: '@52123456789',
+  mentions: ['52123456789@s.whatsapp.net'],
 })
+```
 
-// Video
-await sock.sendMessage(jid, {
-  video: Buffer.from('...'),
-  caption: 'Video',
-  seconds: 30,
-})
+### Reacción
 
-// Video como nota (ptv)
-await sock.sendMessage(jid, {
-  video: Buffer.from('...'),
-  ptv: true,
-})
-
-// Audio como nota de voz
-await sock.sendMessage(jid, {
-  audio: Buffer.from('...'),
-  mimetype: 'audio/ogg; codecs=opus',
-  ptt: true,
-})
-
-// Documento
-await sock.sendMessage(jid, {
-  document: Buffer.from('...'),
-  fileName: 'archivo.pdf',
-  mimetype: 'application/pdf',
-})
-
-// Sticker
-await sock.sendMessage(jid, {
-  sticker: Buffer.from('...'),
-})
-
-// Reaccion
+```ts
 await sock.sendMessage(jid, {
   react: { key: msg.key, text: '👍' },
 })
+```
 
-// Editar mensaje
+### Ubicación
+
+```ts
 await sock.sendMessage(jid, {
-  text: 'Texto nuevo',
-  edit: msg.key,
+  location: {
+    degreesLatitude: 19.43,
+    degreesLongitude: -99.13,
+  },
 })
+```
 
-// Eliminar mensaje
-await sock.sendMessage(jid, { delete: msg.key })
+### Contacto
 
-// Ubicacion
-await sock.sendMessage(jid, {
-  location: { degreesLatitude: 19.43, degreesLongitude: -99.13 },
-})
+```ts
+const vcard = 'BEGIN:VCARD\nVERSION:3.0\nFN:Contacto\nTEL;type=CELL:+521234567890\nEND:VCARD'
 
-// Contacto
 await sock.sendMessage(jid, {
   contacts: {
     displayName: 'Contacto',
-    contacts: [{ vcard: 'BEGIN:VCARD\n...' }],
+    contacts: [{ vcard }],
   },
 })
+```
 
-// Encuesta
+### Encuesta
+
+```ts
 await sock.sendMessage(jid, {
   poll: {
     name: 'Color favorito?',
@@ -157,25 +284,122 @@ await sock.sendMessage(jid, {
 })
 ```
 
----
-
-## Descargar Media
+### Imagen
 
 ```ts
-import { downloadMediaMessage } from 'baileys-natsu'
+await sock.sendMessage(jid, {
+  image: { url: './foto.jpg' },
+  caption: 'Foto',
+})
+```
 
-// Descargar a Buffer
-const buffer = await downloadMediaMessage(msg, 'buffer', {})
-await fs.writeFile('imagen.jpg', buffer)
+### Video
 
-// Descargar a Stream
-const stream = await downloadMediaMessage(msg, 'stream', {})
-stream.pipe(fs.createWriteStream('video.mp4'))
+```ts
+await sock.sendMessage(jid, {
+  video: { url: './video.mp4' },
+  caption: 'Video',
+  seconds: 30,
+  gifPlayback: false,
+})
+```
+
+### Video Nota (PTV)
+
+```ts
+await sock.sendMessage(jid, {
+  video: { url: './video.mp4' },
+  ptv: true,
+})
+```
+
+### Audio
+
+```ts
+await sock.sendMessage(jid, {
+  audio: { url: './audio.mp3' },
+  mimetype: 'audio/mp4',
+  ptt: true, // nota de voz
+})
+```
+
+### Documento
+
+```ts
+await sock.sendMessage(jid, {
+  document: { url: './archivo.pdf' },
+  fileName: 'archivo.pdf',
+  mimetype: 'application/pdf',
+})
+```
+
+### Sticker
+
+```ts
+await sock.sendMessage(jid, {
+  sticker: { url: './sticker.webp' },
+})
+```
+
+### ViewOnce
+
+```ts
+await sock.sendMessage(jid, {
+  image: { url: './foto.jpg' },
+  viewOnce: true,
+  caption: 'Mensaje de una sola vista',
+})
+```
+
+### Editar Mensaje
+
+```ts
+await sock.sendMessage(jid, {
+  text: 'Texto actualizado',
+  edit: msg.key,
+})
+```
+
+### Eliminar Mensaje
+
+```ts
+await sock.sendMessage(jid, { delete: msg.key })
+```
+
+### Reenviar
+
+```ts
+await sock.sendMessage(jid, { forward: msg })
 ```
 
 ---
 
-## Presencia (Typing)
+## Manipular Media
+
+### Descargar Media
+
+```ts
+import { downloadMediaMessage, getContentType } from 'baileys-natsu'
+
+sock.ev.on('messages.upsert', async ({ messages }) => {
+  for (const msg of messages) {
+    const mType = getContentType(msg)
+    if (mType === 'imageMessage') {
+      const buffer = await downloadMediaMessage(msg, 'buffer', {})
+      // guardar buffer...
+    }
+  }
+})
+```
+
+### Thumbnails
+
+- Para imágenes: instala `jimp` o `sharp` como dependencia opcional
+- Para videos: necesitas `ffmpeg` instalado en el sistema
+
+---
+
+## Presencia
 
 ```ts
 // Online / Offline
@@ -194,6 +418,28 @@ await sock.sendPresenceUpdate('paused', jid)
 
 ---
 
+## Modificar Chats
+
+```ts
+// Marcar como leído
+await sock.readMessages([msg.key])
+
+// Archivar chat
+const lastMsg = await getLastMessage(jid)
+await sock.chatModify({ archive: true, lastMessages: [{ key: lastMsg.key, messageTimestamp: lastMsg.messageTimestamp }] }, jid)
+
+// Silenciar 8 horas
+await sock.chatModify({ mute: 8 * 60 * 60 * 1000 }, jid)
+
+// Fijar chat
+await sock.chatModify({ pin: true }, jid)
+
+// Marcar como no leído
+await sock.chatModify({ markRead: false, lastMessages: [/*...*/] }, jid)
+```
+
+---
+
 ## Grupos
 
 ```ts
@@ -203,146 +449,135 @@ const group = await sock.groupCreate('Mi Grupo', [
   '5222222222222@s.whatsapp.net',
 ])
 
-// Obtener metadatos
+// Obtener metadata
 const meta = await sock.groupMetadata(group.id)
 
 // Cambiar nombre
 await sock.groupUpdateSubject(group.id, 'Nuevo Nombre')
 
-// Cambiar descripcion
-await sock.groupUpdateDescription(group.id, 'Nueva descripcion')
+// Cambiar descripción
+await sock.groupUpdateDescription(group.id, 'Nueva descripción')
 
-// Agregar participantes
-await sock.groupParticipantsUpdate(group.id, [
-  '5233333333333@s.whatsapp.net',
-], 'add')
+// Participantes: add, remove, promote, demote
+await sock.groupParticipantsUpdate(group.id, ['5233333333333@s.whatsapp.net'], 'add')
 
-// Eliminar participantes
-await sock.groupParticipantsUpdate(group.id, [
-  '5233333333333@s.whatsapp.net',
-], 'remove')
-
-// Promover/degollar admin
-await sock.groupParticipantsUpdate(group.id, [
-  '5233333333333@s.whatsapp.net',
-], 'promote')
-await sock.groupParticipantsUpdate(group.id, [
-  '5233333333333@s.whatsapp.net',
-], 'demote')
-
-// Configurar grupo (solo admins pueden enviar)
+// Configurar: announcement (solo admins) / not_announcement (todos)
 await sock.groupSettingUpdate(group.id, 'announcement')
-// Configurar grupo (todos pueden enviar)
-await sock.groupSettingUpdate(group.id, 'not_announcement')
 
-// Obtener codigo de invitacion
+// Obtener código de invitación
 const code = await sock.groupInviteCode(group.id)
+// https://chat.whatsapp.com/ + code
 
-// Aceptar invitacion
+// Revocar código
+await sock.groupRevokeInvite(group.id)
+
+// Aceptar invitación
 const jid = await sock.groupAcceptInvite(code)
 
-// Activar mensajes temporales (1 semana)
+// Obtener info por código
+const info = await sock.groupGetInviteInfo(code)
+
+// Mensajes temporales (7 días)
 await sock.groupToggleEphemeral(group.id, 604800)
+
+// Solicitudes de unión
+const requests = await sock.groupRequestParticipantsList(group.id)
+await sock.groupRequestParticipantsUpdate(group.id, ['5233333333333@s.whatsapp.net'], 'approve')
+
+// Modo añadir: admin_add / all_member_add
+await sock.groupMemberAddMode(group.id, 'all_member_add')
 
 // Salir del grupo
 await sock.groupLeave(group.id)
 ```
 
----
+### Ephemeral (Mensajes Temporales)
 
-## Eventos
-
-```ts
-// Conexion
-sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
-  if (connection === 'open') console.log('Conectado')
-  if (connection === 'close') console.log('Desconectado', lastDisconnect?.error)
-})
-
-// Mensajes entrantes
-sock.ev.on('messages.upsert', ({ messages, type }) => {
-  if (type === 'notify') {
-    for (const msg of messages) {
-      const text =
-        msg.message?.conversation ||
-        msg.message?.extendedTextMessage?.text ||
-        ''
-      console.log(`Mensaje de ${msg.key.remoteJid}: ${text}`)
-    }
-  }
-})
-
-// Actualizacion de mensajes (lectura, edicion)
-sock.ev.on('messages.update', (updates) => {
-  for (const { key, update } of updates) {
-    console.log('Mensaje actualizado:', key.id)
-  }
-})
-
-// Presencia de contactos
-sock.ev.on('presence.update', ({ id, presences }) => {
-  for (const [participant, data] of Object.entries(presences)) {
-    console.log(`${participant}: ${data.lastKnownPresence}`)
-  }
-})
-
-// Participantes de grupo
-sock.ev.on('group-participants.update', ({ id, participants, action }) => {
-  console.log(`Grupo ${id}: ${action} -> ${participants.join(', ')}`)
-})
-
-// Llamadas entrantes
-sock.ev.on('call', (calls) => {
-  for (const call of calls) {
-    console.log(`Llamada de ${call.from}: ${call.status}`)
-  }
-})
-```
+| Duración | Segundos |
+|----------|----------|
+| Apagar   | 0 |
+| 24h      | 86400 |
+| 7d       | 604800 |
+| 90d      | 7776000 |
 
 ---
 
-## Chat Modificar
-
-```ts
-// Marcar como leido
-await sock.readMessages([msg.key])
-
-// Archivar chat
-await sock.chatModify({ archive: true }, jid)
-
-// Silenciar chat (por 8 horas)
-await sock.chatModify({ mute: 8 * 60 * 60 * 1000 }, jid)
-
-// Fijar chat
-await sock.chatModify({ pin: true }, jid)
-```
-
----
-
-## Profile
+## Perfil
 
 ```ts
 // Obtener foto de perfil
 const url = await sock.profilePictureUrl(jid, 'image')
 
-// Cambiar nombre de perfil
+// Verificar si existe en WhatsApp
+const [result] = await sock.onWhatsApp(jid)
+if (result.exists) console.log('Existe:', result.jid)
+
+// Obtener estado
+const status = await sock.fetchStatus(jid)
+
+// Cambiar nombre
 await sock.updateProfileName('Mi Nombre')
 
 // Cambiar estado
 await sock.updateProfileStatus('Mi estado')
 
-// Bloquear usuario
+// Cambiar foto de perfil
+await sock.updateProfilePicture(jid, { url: './foto.jpg' })
+
+// Eliminar foto de perfil
+await sock.removeProfilePicture(jid)
+```
+
+---
+
+## Privacidad
+
+```ts
+// Bloquear / desbloquear
 await sock.updateBlockStatus(jid, 'block')
-// Desbloquear
 await sock.updateBlockStatus(jid, 'unblock')
+
+// Obtener lista de bloqueados
+const blocklist = await sock.fetchBlocklist()
+
+// Obtener configuración de privacidad
+const privacy = await sock.fetchPrivacySettings(true)
+
+// Actualizar privacidad
+await sock.updateLastSeenPrivacy('all') // contacts | contact_blacklist | none
+await sock.updateOnlinePrivacy('all')   // match_last_seen
+await sock.updateProfilePicturePrivacy('all')
+await sock.updateStatusPrivacy('all')
+await sock.updateReadReceiptsPrivacy('all')
+
+// Modo desaparecido por defecto
+await sock.updateDefaultDisappearingMode(86400)
+```
+
+---
+
+## Utilidades
+
+```ts
+import { getContentType, getDevice, downloadContentFromMessage, makeCacheableSignalKeyStore } from 'baileys-natsu'
+
+// Obtener tipo de contenido
+const type = getContentType(msg)
+
+// Obtener dispositivo
+const device = getDevice(msg)
+
+// Cache de signal store
+const cachedStore = makeCacheableSignalKeyStore(keys, logger)
 ```
 
 ---
 
 ## Disclaimer
 
-Este proyecto no esta afiliado, asociado, autorizado, respaldado ni conectado oficialmente con WhatsApp ni ninguna de sus subsidiarias o afiliadas.
-El uso de esta libreria es bajo tu propia responsabilidad. No uses esta libreria para spam, mensajes automatizados masivos o cualquier otra actividad que viole los Terminos de Servicio de WhatsApp.
+Este proyecto no está afiliado, asociado, autorizado, respaldado ni conectado oficialmente con WhatsApp o cualquiera de sus subsidiarias o afiliadas.
+
+El uso de esta librería es bajo tu propia responsabilidad. No uses esta librería para spam, mensajes automatizados masivos o cualquier otra actividad que viole los Términos de Servicio de WhatsApp.
 
 ## License
 
