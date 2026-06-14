@@ -1,7 +1,7 @@
 {
   "name": "baileys-natsu",
   "type": "module",
-  "version": "7.0.0-rc16",
+  "version": "7.0.0-rc17",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -32,8 +32,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "lint": "tsc && eslint src --ext .js,.ts",
     "lint:fix": "npm run format && npm run lint -- --fix",
-    "prepack": "npm run build",
-    "prepare": "npm run build",
+    "prepack": "yarn build",
+    "prepare": "yarn build",
     "preinstall": "node ./engine-requirements.js",
     "release": "release-it",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test.ts'",
