@@ -15,11 +15,13 @@ import type {
 	AnyMediaMessageContent,
 	AnyMessageContent,
 	DownloadableMessage,
+	InteractiveMessageContent,
 	MessageContentGenerationOptions,
 	MessageGenerationOptions,
 	MessageGenerationOptionsFromContent,
 	MessageUserReceipt,
 	MessageWithContextInfo,
+	ProductMessageContent,
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
@@ -623,8 +625,101 @@ export const generateWAMessageContent = async (
 				initiatedByMe: true
 			}
 		}
+	} else if (hasNonNullishProperty(message, 'albumMessage') && Array.isArray(message.albumMessage)) {
+		const albumItems = message.albumMessage
+		const imageCount = albumItems.filter(item => 'image' in item).length
+		const videoCount = albumItems.filter(item => 'video' in item).length
+		m.albumMessage = {
+			expectedImageCount: imageCount,
+			expectedVideoCount: videoCount
+		}
+	} else if (hasNonNullishProperty(message, 'pollResultMessage')) {
+		m.pollResultSnapshotMessage = WAProto.Message.PollResultSnapshotMessage.create(message.pollResultMessage)
+	} else if (hasNonNullishProperty(message, 'interactiveMessage')) {
+		const im = message.interactiveMessage as InteractiveMessageContent
+		const interactiveMsg: proto.Message.IInteractiveMessage = {}
+
+		if (im.header) {
+			interactiveMsg.header = { title: im.header }
+		}
+		if (im.body) {
+			interactiveMsg.body = { text: im.body }
+		}
+		if (im.footer) {
+			interactiveMsg.footer = { text: im.footer }
+		}
+
+		if (im.image) {
+			const { imageMessage } = await prepareWAMessageMedia({ image: im.image }, options)
+			interactiveMsg.header = {
+				...interactiveMsg.header,
+				hasMediaAttachment: true,
+				imageMessage
+			}
+		}
+
+		if (im.document) {
+			const { documentMessage } = await prepareWAMessageMedia({
+				document: im.document,
+				mimetype: im.mimetype || 'application/octet-stream',
+				fileName: im.fileName || 'document',
+				jpegThumbnail: im.jpegThumbnail
+			} as any, options)
+			interactiveMsg.header = {
+				...interactiveMsg.header,
+				hasMediaAttachment: true,
+				documentMessage
+			}
+		}
+
+		if (im.buttons) {
+			interactiveMsg.nativeFlowMessage = WAProto.Message.InteractiveMessage.NativeFlowMessage.create({
+				buttons: im.buttons
+			})
+		}
+
+		if (im.nativeFlowMessage) {
+			interactiveMsg.nativeFlowMessage = WAProto.Message.InteractiveMessage.NativeFlowMessage.create(im.nativeFlowMessage)
+		}
+
+		if (im.externalAdReply) {
+			interactiveMsg.contextInfo = {
+				...interactiveMsg.contextInfo,
+				externalAdReply: im.externalAdReply
+			}
+		}
+
+		if (im.contextInfo) {
+			interactiveMsg.contextInfo = {
+				...interactiveMsg.contextInfo,
+				...im.contextInfo
+			}
+		}
+
+		m.interactiveMessage = WAProto.Message.InteractiveMessage.create(interactiveMsg)
+	} else if (hasNonNullishProperty(message, 'productMessage')) {
+		const pm = message.productMessage as ProductMessageContent
+		const { imageMessage } = await prepareWAMessageMedia({ image: pm.thumbnail }, options)
+		m.productMessage = WAProto.Message.ProductMessage.create({
+			body: pm.body,
+			footer: pm.footer,
+			businessOwnerJid: pm.businessOwnerJid,
+			product: {
+				productId: pm.productId,
+				title: pm.title,
+				description: pm.description,
+				retailerId: pm.retailerId,
+				url: pm.url,
+				priceAmount1000: pm.priceAmount1000,
+				currencyCode: pm.currencyCode,
+				productImage: imageMessage,
+				productImageCount: 1
+			}
+		})
+	} else if (hasNonNullishProperty(message, 'requestPaymentMessage')) {
+		m.requestPaymentMessage = WAProto.Message.RequestPaymentMessage.create(message.requestPaymentMessage)
 	} else {
-		m = await prepareWAMessageMedia(message, options)
+		m = await prepareWAMessageMedia(message as any, options)
 	}
 
 	if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {

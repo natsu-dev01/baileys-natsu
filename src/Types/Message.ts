@@ -163,6 +163,57 @@ export type AlbumMessageOptions = {
 	expectedVideoCount?: number
 }
 
+export type AlbumMessageItem = (
+	| ({
+			image: WAMediaUpload
+			caption?: string
+	  } & Mentionable &
+			WithDimensions)
+	| ({
+			video: WAMediaUpload
+			caption?: string
+	  } & Mentionable &
+			WithDimensions)
+)
+
+export type NativeFlowButton = {
+	name: string
+	buttonParamsJson: string
+}
+
+export type InteractiveMessageContent = {
+	header?: string
+	body?: string
+	footer?: string
+	image?: WAMediaUpload
+	document?: WAMediaUpload
+	mimetype?: string
+	fileName?: string
+	jpegThumbnail?: WAMediaUpload
+	contextInfo?: proto.IContextInfo
+	externalAdReply?: proto.ContextInfo.IExternalAdReplyInfo
+	nativeFlowMessage?: {
+		messageParamsJson?: string
+		buttons: NativeFlowButton[]
+	}
+	buttons?: NativeFlowButton[]
+}
+
+export type ProductMessageContent = {
+	title?: string
+	description?: string
+	thumbnail: WAMediaUpload
+	productId?: string
+	retailerId?: string
+	url?: string
+	body?: string
+	footer?: string
+	priceAmount1000?: number
+	currencyCode?: string
+	buttons?: NativeFlowButton[]
+	businessOwnerJid?: string
+}
+
 type SharePhoneNumber = {
 	sharePhoneNumber: boolean
 }
@@ -305,6 +356,21 @@ export type AnyRegularMessageContent = (
 	  }
 	| SharePhoneNumber
 	| RequestPhoneNumber
+	| {
+			albumMessage: AlbumMessageItem[]
+	  }
+	| {
+			pollResultMessage: proto.Message.IPollResultSnapshotMessage
+	  }
+	| {
+			interactiveMessage: InteractiveMessageContent
+	  }
+	| {
+			productMessage: ProductMessageContent
+	  }
+	| {
+			requestPaymentMessage: proto.Message.IRequestPaymentMessage
+	  }
 ) &
 	ViewOnce
 

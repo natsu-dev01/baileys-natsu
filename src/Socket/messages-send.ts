@@ -5,6 +5,7 @@ import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
 	MediaConnInfo,
+	MessageGenerationOptions,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
@@ -1341,6 +1342,58 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							: 0
 						: disappearingMessagesInChat
 				await groupToggleEphemeral(jid, value)
+			} else if ('albumMessage' in content && Array.isArray(content.albumMessage)) {
+				const albumItems = content.albumMessage
+				const genOptions = {
+					logger,
+					userJid,
+					getUrlInfo: text =>
+						getUrlInfo(text, {
+							thumbnailWidth: linkPreviewImageThumbnailWidth,
+							fetchOpts: {
+								timeout: 3_000,
+								...(httpRequestOptions || {})
+							},
+							logger,
+							uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+						}),
+					getProfilePicUrl: sock.profilePictureUrl,
+					getCallLink: sock.createCallLink,
+					upload: waUploadToServer,
+					mediaCache: config.mediaCache,
+					options: config.options,
+					messageId: generateMessageIDV2(sock.user?.id),
+					...options
+				} as MessageGenerationOptions
+
+				const albumMsg = await generateWAMessage(jid, { albumMessage: albumItems } as AnyMessageContent, genOptions)
+
+				await relayMessage(jid, albumMsg.message!, {
+					messageId: albumMsg.key.id!,
+					useCachedGroupMetadata: options.useCachedGroupMetadata,
+					statusJidList: options.statusJidList,
+				})
+
+				for (const item of albumItems) {
+					const itemContent = {
+						...item,
+						albumParentKey: albumMsg.key
+					} as AnyMessageContent
+					const itemMsg = await generateWAMessage(jid, itemContent, genOptions)
+					await relayMessage(jid, itemMsg.message!, {
+						messageId: itemMsg.key.id!,
+						useCachedGroupMetadata: options.useCachedGroupMetadata,
+						statusJidList: options.statusJidList,
+					})
+				}
+
+				if (config.emitOwnEvents) {
+					process.nextTick(async () => {
+						await messageMutex.mutex(() => upsertMessage(albumMsg, 'append'))
+					})
+				}
+
+				return albumMsg
 			} else {
 				const fullMsg = await generateWAMessage(jid, content, {
 					logger,

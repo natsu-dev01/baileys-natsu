@@ -60,6 +60,15 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, downloadMediaMes
     - [Editar Mensaje](#editar-mensaje)
     - [Eliminar Mensaje](#eliminar-mensaje)
     - [Reenviar](#reenviar)
+- [Album](#album-message)
+- [Poll Result](#poll-result-message)
+- [Interactive Message](#interactive-message)
+    - [Simple con Botones](#interactive-simple)
+    - [Con Native Flow](#interactive-con-native-flow)
+    - [Con Imagen](#interactive-con-imagen)
+    - [Con Documento](#interactive-con-documento)
+- [Product Message](#product-message)
+- [Request Payment](#request-payment-message)
 - [Manipular Media](#manipular-media)
     - [Descargar Media](#descargar-media)
     - [Thumbnails](#thumbnails)
@@ -370,6 +379,258 @@ await sock.sendMessage(jid, { delete: msg.key })
 
 ```ts
 await sock.sendMessage(jid, { forward: msg })
+```
+
+---
+
+### Album Message
+
+Envía varias imágenes/videos en un solo álbum agrupado. Cada elemento se envía como mensaje individual pero se muestran agrupados en WhatsApp.
+
+```ts
+// Álbum de imágenes
+await sock.sendMessage(jid, {
+  albumMessage: [
+    { image: { url: './foto1.jpg' }, caption: 'Foto 1' },
+    { image: { url: './foto2.jpg' }, caption: 'Foto 2' },
+  ],
+})
+
+// Álbum mixto (imagen + video)
+await sock.sendMessage(jid, {
+  albumMessage: [
+    { image: { url: './foto.jpg' }, caption: 'Imagen' },
+    { video: { url: './video.mp4' }, caption: 'Video' },
+  ],
+})
+```
+
+### Poll Result Message
+
+Envía el resultado de una encuesta (generalmente usado después de cerrar una encuesta).
+
+```ts
+await sock.sendMessage(jid, {
+  pollResultMessage: {
+    name: 'Encuesta: Color favorito?',
+    pollVotes: [
+      { optionName: 'Rojo', optionVoteCount: '15' },
+      { optionName: 'Azul', optionVoteCount: '10' },
+      { optionName: 'Verde', optionVoteCount: '5' },
+    ],
+  },
+})
+```
+
+### Interactive Message
+
+#### Interactive Simple
+
+Mensaje interactivo con botones de acción (copiar, url, etc.).
+
+```ts
+await sock.sendMessage(jid, {
+  interactiveMessage: {
+    header: 'Título del mensaje',
+    body: 'Descripción aquí',
+    footer: 'Pie de página',
+    buttons: [
+      {
+        name: 'cta_copy',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Copiar Código',
+          id: '123456',
+          copy_code: 'ABC123',
+        }),
+      },
+      {
+        name: 'cta_url',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Visitar Sitio',
+          url: 'https://example.com',
+          merchant_url: 'https://example.com',
+        }),
+      },
+    ],
+  },
+})
+```
+
+#### Interactive con Native Flow
+
+Mensaje interactivo con menú de selección, ofertas y más.
+
+```ts
+await sock.sendMessage(jid, {
+  interactiveMessage: {
+    header: 'Tienda Online',
+    body: 'Selecciona una opción',
+    footer: 'Oferta válida por tiempo limitado',
+    image: { url: 'https://example.com/oferta.jpg' },
+    nativeFlowMessage: {
+      messageParamsJson: JSON.stringify({
+        limited_time_offer: {
+          text: '50% OFF',
+          url: 'https://example.com/offer',
+          copy_code: 'OFFER2024',
+          expiration_time: Date.now() + 86400000,
+        },
+        bottom_sheet: {
+          in_thread_buttons_limit: 2,
+          list_title: 'Selecciona',
+          button_title: 'Ver opciones',
+        },
+        tap_target_configuration: {
+          title: 'Comprar Ahora',
+          description: 'Productos destacados',
+          canonical_url: 'https://example.com/shop',
+          domain: 'shop.example.com',
+          button_index: 0,
+        },
+      }),
+      buttons: [
+        {
+          name: 'single_select',
+          buttonParamsJson: JSON.stringify({
+            title: 'Opciones',
+            sections: [
+              {
+                title: 'Categoría 1',
+                highlight_label: 'Popular',
+                rows: [
+                  { title: 'Opción 1', description: 'Descripción', id: 'opt_1' },
+                  { title: 'Opción 2', description: 'Descripción', id: 'opt_2' },
+                ],
+              },
+            ],
+          }),
+        },
+      ],
+    },
+  },
+})
+```
+
+#### Interactive con Imagen
+
+```ts
+await sock.sendMessage(jid, {
+  interactiveMessage: {
+    header: 'Oferta Especial',
+    body: 'Aprovecha esta oferta',
+    footer: 'Válido hasta agotar existencias',
+    image: { url: 'https://example.com/oferta.jpg' },
+    buttons: [
+      {
+        name: 'cta_url',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Comprar',
+          url: 'https://example.com/buy',
+        }),
+      },
+    ],
+  },
+})
+```
+
+#### Interactive con Documento
+
+Los documentos solo soportan buffer.
+
+```ts
+const documento = fs.readFileSync('./documento.pdf')
+const thumbnail = fs.readFileSync('./thumbnail.jpeg')
+
+await sock.sendMessage(jid, {
+  interactiveMessage: {
+    header: 'Documento Adjunto',
+    body: 'Revisa el documento',
+    footer: 'Documentación oficial',
+    document: documento,
+    mimetype: 'application/pdf',
+    fileName: 'documento.pdf',
+    jpegThumbnail: thumbnail,
+    contextInfo: {
+      mentionedJid: [jid],
+      forwardingScore: 777,
+      isForwarded: false,
+    },
+    externalAdReply: {
+      title: 'Mi Bot',
+      body: 'Mira esto',
+      mediaType: 3,
+      thumbnailUrl: 'https://example.com/thumb.jpg',
+      mediaUrl: 'https://example.com',
+      sourceUrl: 'https://example.com',
+      showAdAttribution: true,
+      renderLargerThumbnail: false,
+    },
+    buttons: [
+      {
+        name: 'cta_url',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Visitar Sitio',
+          url: 'https://example.com',
+        }),
+      },
+    ],
+  },
+})
+```
+
+### Product Message
+
+Envía un mensaje de producto con imagen, precio y botón de compra.
+
+```ts
+await sock.sendMessage(jid, {
+  productMessage: {
+    title: 'Producto de Ejemplo',
+    description: 'Descripción del producto',
+    thumbnail: { url: 'https://example.com/producto.jpg' },
+    productId: 'PROD001',
+    retailerId: 'TIENDA001',
+    url: 'https://example.com/producto',
+    body: 'Detalles del producto',
+    footer: 'Precio especial',
+    priceAmount1000: 50000,
+    currencyCode: 'USD',
+    businessOwnerJid: jid,
+    buttons: [
+      {
+        name: 'cta_url',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Comprar Ahora',
+          url: 'https://example.com/comprar',
+        }),
+      },
+    ],
+  },
+})
+```
+
+### Request Payment Message
+
+Solicita un pago a un contacto.
+
+```ts
+await sock.sendMessage(jid, {
+  requestPaymentMessage: {
+    currencyCodeIso4217: 'IDR',
+    amount1000: 10000000,
+    requestFrom: msg.key.participant || msg.key.remoteJid,
+    background: {
+      id: '100',
+      fileLength: '0',
+      width: 1000,
+      height: 1000,
+      mimetype: 'image/webp',
+      placeholderArgb: 0xFF00FFFF,
+      textArgb: 0xFFFFFFFF,
+      subtextArgb: 0xFFAA00FF,
+    },
+  },
+})
 ```
 
 ---
