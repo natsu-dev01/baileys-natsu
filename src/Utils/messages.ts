@@ -625,14 +625,6 @@ export const generateWAMessageContent = async (
 				initiatedByMe: true
 			}
 		}
-	} else if (hasNonNullishProperty(message, 'albumMessage') && Array.isArray(message.albumMessage)) {
-		const albumItems = message.albumMessage
-		const imageCount = albumItems.filter(item => 'image' in item).length
-		const videoCount = albumItems.filter(item => 'video' in item).length
-		m.albumMessage = {
-			expectedImageCount: imageCount,
-			expectedVideoCount: videoCount
-		}
 	} else if (hasNonNullishProperty(message, 'pollResultMessage')) {
 		m.pollResultSnapshotMessage = WAProto.Message.PollResultSnapshotMessage.create(message.pollResultMessage)
 	} else if (hasNonNullishProperty(message, 'interactiveMessage')) {
@@ -775,7 +767,8 @@ export const generateWAMessageContent = async (
 			...m.messageContextInfo,
 			messageAssociation: {
 				associationType: WAProto.MessageAssociation.AssociationType.MEDIA_ALBUM,
-				parentMessageKey: message.albumParentKey
+				parentMessageKey: message.albumParentKey,
+				messageIndex: 'messageIndex' in message ? (message as any).messageIndex : undefined
 			}
 		}
 	}

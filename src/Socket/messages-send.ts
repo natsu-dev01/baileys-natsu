@@ -1342,7 +1342,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							: 0
 						: disappearingMessagesInChat
 				await groupToggleEphemeral(jid, value)
-			} else if ('albumMessage' in content && Array.isArray(content.albumMessage)) {
+			} else if ('albumMessage' in content && Array.isArray(content.albumMessage) && content.albumMessage.length > 0) {
 				const albumItems = content.albumMessage
 				const genOptions = {
 					logger,
@@ -1366,18 +1366,36 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					...options
 				} as MessageGenerationOptions
 
-				const albumMsg = await generateWAMessage(jid, { albumMessage: albumItems } as AnyMessageContent, genOptions)
+				const imageCount = albumItems.filter(i => 'image' in i).length
+				const videoCount = albumItems.filter(i => 'video' in i).length
 
-				await relayMessage(jid, albumMsg.message!, {
-					messageId: albumMsg.key.id!,
+				// First item: send as combined media + albumMessage
+				const firstItem = albumItems[0]
+				const firstContent = { ...firstItem } as AnyMessageContent
+				const firstMsg = await generateWAMessage(jid, firstContent, genOptions)
+
+				// Add albumMessage to the same message so it carries both media + album metadata
+				if (firstMsg.message) {
+					firstMsg.message.albumMessage = proto.Message.AlbumMessage.create({
+						expectedImageCount: imageCount,
+						expectedVideoCount: videoCount,
+					})
+				}
+
+				await relayMessage(jid, firstMsg.message!, {
+					messageId: firstMsg.key.id!,
 					useCachedGroupMetadata: options.useCachedGroupMetadata,
 					statusJidList: options.statusJidList,
 				})
 
-				for (const item of albumItems) {
+				// Subsequent items: send as media with albumParentKey + messageIndex
+				const remaining = albumItems.slice(1)
+				for (let i = 0; i < remaining.length; i++) {
+					const item = remaining[i]
 					const itemContent = {
 						...item,
-						albumParentKey: albumMsg.key
+						albumParentKey: firstMsg.key,
+						messageIndex: i + 1,
 					} as AnyMessageContent
 					const itemMsg = await generateWAMessage(jid, itemContent, genOptions)
 					await relayMessage(jid, itemMsg.message!, {
@@ -1389,11 +1407,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
-						await messageMutex.mutex(() => upsertMessage(albumMsg, 'append'))
+						await messageMutex.mutex(() => upsertMessage(firstMsg, 'append'))
 					})
 				}
 
-				return albumMsg
+				return firstMsg
 			} else {
 				const fullMsg = await generateWAMessage(jid, content, {
 					logger,

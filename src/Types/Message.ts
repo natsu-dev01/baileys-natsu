@@ -282,6 +282,8 @@ export type AnyMediaMessageContent = (
 ) & { mimetype?: string } & Editable & {
 		/** key of the parent albumMessage to associate this media with */
 		albumParentKey?: WAMessageKey
+		/** index of this media in the album (for ordering) */
+		messageIndex?: number
 	}
 
 export type ButtonReplyInfo = {
